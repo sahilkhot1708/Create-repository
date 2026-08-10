@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-lg mx-auto py-12 px-4">
+  <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+    <div id="doctorInfo" class="mb-6 pb-6 border-b border-slate-100">
+      <p class="text-slate-400 text-sm">Loading doctor…</p>
+    </div>
+
+    <p id="loginNotice" class="hidden bg-amber-50 text-amber-800 text-sm p-3 rounded-lg mb-4">
+      Please <a href="/login" class="underline font-medium">log in</a> to book an appointment.
+    </p>
+    <p id="bookError" class="hidden bg-red-50 text-red-700 text-sm p-3 rounded-lg mb-4"></p>
+
+    <form id="bookForm">
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">Select Date</label>
+        <input type="date" id="date" required class="w-full border border-slate-300 rounded-lg p-2.5">
+      </div>
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-1">Time Slot</label>
+        <select id="timeSlot" class="w-full border border-slate-300 rounded-lg p-2.5">
+          <option>10:00 AM - 11:00 AM</option>
+          <option>11:30 AM - 12:30 PM</option>
+          <option>02:00 PM - 03:00 PM</option>
+          <option>04:00 PM - 05:00 PM</option>
+        </select>
+      </div>
+      <div class="mb-6">
+        <label class="block text-sm font-medium mb-1">Reason / Notes</label>
+        <textarea id="notes" class="w-full border border-slate-300 rounded-lg p-2.5" rows="3" placeholder="Briefly describe your symptom..."></textarea>
+      </div>
+      <button type="submit" id="bookBtn" class="w-full bg-primary text-white py-3 rounded-lg font-semibold hover:bg-primaryHover transition">Confirm Booking</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const doctorId = "{{ doctor_id }}";
+let currentDoctor = null;
+
+async function loadDoctor() {
+  try {
+    const res = await fetch(`/api/doctors/${doctorId}`);
+    if (!res.ok) throw new Error((await res.json()).error || 'Doctor not found');
+    currentDoctor = await res.json();
+    document.getElementById('doctorInfo').innerHTML = `
+      <h2 class="text-2xl font-bold text-slate-900">${currentDoctor.name}</h2>
+      <p class="text-primary font-medium text-sm">${currentDoctor.specialization} • ${currentDoctor.experience || ''}</p>
+      <p class="text-slate-600 text-sm mt-1">Consultation fee: ₹${currentDoctor.fee}</p>
+    `;
+  } catch (e) {
+    document.getElementById('doctorInfo').innerHTML = `<p class="text-red-600">${e.message}</p>`;
+  }
+}
+loadDoctor();
+
+window.addEventListener('firebase-ready', () => {
+  import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ onAuthStateChanged }) => {
+    onAuthStateChanged(window.firebaseAuth, (user) => {
+      document.getElementById('loginNotice').classList.toggle('hidden', !!user);
+      document.getElementById('bookBtn').disabled = !user;
+    });
+
+    document.getElementById('bookForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const user = window.firebaseAuth.currentUser;
+      if (!user) { window.location.href = '/login'; return; }
+
+      const btn = document.getElementById('bookBtn');
+      btn.disabled = true;
+      btn.textContent = 'Booking…';
+      const errEl = document.getElementById('bookError');
+      errEl.classList.add('hidden');
+
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch('/api/appointments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+          body: JSON.stringify({
+            doctorId: doctorId,
+            doctorName: currentDoctor ? currentDoctor.name : '',
+            specialization: currentDoctor ? currentDoctor.specialization : '',
+            date: document.getElementById('date').value,
+            timeSlot: document.getElementById('timeSlot').value,
+            notes: document.getElementById('notes').value
+          })
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Booking failed');
+        window.location.href = '/my-appointments';
+      } catch (err) {
+        errEl.textContent = err.message;
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Confirm Booking';
+      }
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <div class="flex justify-between items-center mb-6">
+    <h1 class="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+    <a href="/admin/logout" class="text-sm text-slate-500 hover:underline">Logout ({{ session.get('admin_email', '') }})</a>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Total Appointments</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statTotal">—</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Today's Appointments</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statToday">—</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Pending Approval</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statPending">—</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Total Doctors</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statDoctors">—</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Registered Patients</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statPatients">—</p>
+    </div>
+  </div>
+
+  <div class="flex gap-4">
+    <a href="/admin/doctors" class="bg-primary text-white px-5 py-2.5 rounded-lg font-medium hover:bg-primaryHover">Manage Doctors</a>
+    <a href="/admin/appointments" class="bg-slate-800 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-slate-900">Manage Appointments</a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadStats() {
+  const res = await fetch('/api/admin/stats');
+  const data = await res.json();
+  if (!res.ok) {
+    document.getElementById('statTotal').textContent = '⚠';
+    return;
+  }
+  document.getElementById('statTotal').textContent = data.totalAppointments;
+  document.getElementById('statToday').textContent = data.todayAppointments;
+  document.getElementById('statPending').textContent = data.pendingAppointments;
+  document.getElementById('statDoctors').textContent = data.totalDoctors;
+  document.getElementById('statPatients').textContent = data.totalPatients;
+}
+loadStats();
+</script>
+{% endblock %}

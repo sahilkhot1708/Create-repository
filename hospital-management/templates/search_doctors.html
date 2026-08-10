@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-slate-900 mb-6">Find & Book a Doctor</h1>
+
+  <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 mb-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div>
+      <label class="block text-sm font-medium mb-1">Search Doctor</label>
+      <input type="text" id="searchInput" oninput="filterDoctors()" placeholder="Name..."
+        class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Specialization</label>
+      <select id="specFilter" onchange="filterDoctors()" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none">
+        <option value="All">All Specializations</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Availability (day)</label>
+      <select id="availFilter" onchange="filterDoctors()" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none">
+        <option value="All">Any day</option>
+        <option value="Mon">Mon</option><option value="Tue">Tue</option><option value="Wed">Wed</option>
+        <option value="Thu">Thu</option><option value="Fri">Fri</option><option value="Sat">Sat</option><option value="Sun">Sun</option>
+      </select>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Sort By</label>
+      <select id="sortOption" onchange="filterDoctors()" class="w-full border border-slate-300 rounded-lg p-2.5 focus:ring-2 focus:ring-primary focus:outline-none">
+        <option value="rating">Rating (High to Low)</option>
+        <option value="fee_low">Fee: Low to High</option>
+        <option value="fee_high">Fee: High to Low</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="doctorGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <p class="text-slate-500 col-span-3">Loading doctors…</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let allDoctors = [];
+
+async function loadDoctors() {
+  try {
+    const res = await fetch('/api/doctors');
+    if (!res.ok) throw new Error((await res.json()).error || 'Failed to load');
+    allDoctors = await res.json();
+
+    const specs = [...new Set(allDoctors.map(d => d.specialization))];
+    const specSelect = document.getElementById('specFilter');
+    specs.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s; opt.textContent = s;
+      specSelect.appendChild(opt);
+    });
+
+    filterDoctors();
+  } catch (e) {
+    document.getElementById('doctorGrid').innerHTML =
+      `<p class="text-red-600 col-span-3">${e.message}</p>`;
+  }
+}
+
+function filterDoctors() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const spec = document.getElementById('specFilter').value;
+  const avail = document.getElementById('availFilter').value;
+  const sort = document.getElementById('sortOption').value;
+
+  let filtered = allDoctors.filter(d =>
+    (d.name || '').toLowerCase().includes(search) &&
+    (spec === 'All' || d.specialization === spec) &&
+    (avail === 'All' || (d.availability || '').includes(avail))
+  );
+
+  if (sort === 'fee_low') filtered.sort((a, b) => (a.fee || 0) - (b.fee || 0));
+  if (sort === 'fee_high') filtered.sort((a, b) => (b.fee || 0) - (a.fee || 0));
+  if (sort === 'rating') filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+  const grid = document.getElementById('doctorGrid');
+  if (filtered.length === 0) {
+    grid.innerHTML = '<p class="text-slate-500 col-span-3">No doctors match your filters.</p>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(d => `
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center mb-2">
+          <h3 class="font-bold text-xl">${d.name}</h3>
+          <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded">★ ${d.rating ?? '—'}</span>
+        </div>
+        <p class="text-primary font-medium text-sm">${d.specialization} • ${d.experience || ''}</p>
+        <p class="text-slate-500 text-xs mt-1">${d.availability || ''}</p>
+        <p class="text-slate-600 mt-2">Fee: ₹${d.fee}</p>
+      </div>
+      <a href="/book/${d.id}" class="mt-4 block text-center bg-primary text-white py-2 rounded-lg font-medium hover:bg-primaryHover">Book Appointment</a>
+    </div>
+  `).join('');
+}
+
+loadDoctors();
+</script>
+{% endblock %}

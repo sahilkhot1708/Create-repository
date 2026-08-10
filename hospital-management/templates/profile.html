@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-slate-900 mb-6">My Profile & Medical History</h1>
+  <p id="loginNotice" class="hidden bg-amber-50 text-amber-800 text-sm p-3 rounded-lg mb-6">
+    Please <a href="/login" class="underline font-medium">log in</a> to view your profile.
+  </p>
+  <p id="saveMsg" class="hidden bg-green-50 text-green-700 text-sm p-3 rounded-lg mb-4">Profile updated.</p>
+
+  <form id="profileForm" class="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 space-y-5">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div>
+        <label class="block text-sm font-medium mb-1">Full Name</label>
+        <input type="text" id="name" class="w-full border border-slate-300 rounded-lg p-2.5">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Phone</label>
+        <input type="tel" id="phone" class="w-full border border-slate-300 rounded-lg p-2.5">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Date of Birth</label>
+        <input type="date" id="dob" class="w-full border border-slate-300 rounded-lg p-2.5">
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Blood Group</label>
+        <select id="bloodGroup" class="w-full border border-slate-300 rounded-lg p-2.5">
+          <option value="">Select</option>
+          <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+          <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+        </select>
+      </div>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Known Allergies</label>
+      <input type="text" id="allergies" placeholder="e.g. Penicillin, Peanuts" class="w-full border border-slate-300 rounded-lg p-2.5">
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Existing Conditions / Medical History Notes</label>
+      <textarea id="medicalHistory" rows="4" placeholder="e.g. Diagnosed with hypertension in 2022, on regular medication..." class="w-full border border-slate-300 rounded-lg p-2.5"></textarea>
+    </div>
+    <button type="submit" id="saveBtn" class="bg-primary text-white px-6 py-2.5 rounded-lg font-semibold hover:bg-primaryHover transition">Save Profile</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener('firebase-ready', () => {
+  import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ onAuthStateChanged }) => {
+    onAuthStateChanged(window.firebaseAuth, async (user) => {
+      document.getElementById('loginNotice').classList.toggle('hidden', !!user);
+      if (!user) return;
+
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/patients/profile', { headers: { 'Authorization': `Bearer ${idToken}` } });
+      const data = await res.json();
+      document.getElementById('name').value = data.name || user.displayName || '';
+      document.getElementById('phone').value = data.phone || '';
+      document.getElementById('dob').value = data.dob || '';
+      document.getElementById('bloodGroup').value = data.bloodGroup || '';
+      document.getElementById('allergies').value = data.allergies || '';
+      document.getElementById('medicalHistory').value = data.medicalHistory || '';
+
+      document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        const token = await user.getIdToken();
+        const res = await fetch('/api/patients/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({
+            name: document.getElementById('name').value,
+            phone: document.getElementById('phone').value,
+            dob: document.getElementById('dob').value,
+            bloodGroup: document.getElementById('bloodGroup').value,
+            allergies: document.getElementById('allergies').value,
+            medicalHistory: document.getElementById('medicalHistory').value
+          })
+        });
+        btn.disabled = false;
+        btn.textContent = 'Save Profile';
+        if (res.ok) {
+          const msg = document.getElementById('saveMsg');
+          msg.classList.remove('hidden');
+          setTimeout(() => msg.classList.add('hidden'), 3000);
+        }
+      });
+    });
+  });
+});
+</script>
+{% endblock %}

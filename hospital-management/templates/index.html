@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-20 text-center">
+  <h1 class="text-4xl md:text-6xl font-bold text-slate-900 mb-6">
+    Skip the Queue. <br><span class="text-primary">Book Doctor Appointments Online.</span>
+  </h1>
+  <p class="text-lg text-slate-600 max-w-2xl mx-auto mb-8">
+    Connect with top doctors, manage appointment schedules, and view your medical history instantly — no waiting room required.
+  </p>
+  <div class="flex flex-wrap justify-center gap-4">
+    <a href="/doctors/search" class="bg-primary text-white px-6 py-3 rounded-xl text-lg font-semibold hover:bg-primaryHover transition">Book Appointment</a>
+    <a href="/signup" class="border border-slate-300 text-slate-700 px-6 py-3 rounded-xl text-lg font-semibold hover:bg-slate-100 transition">Patient Register</a>
+  </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 pb-20 grid grid-cols-1 md:grid-cols-3 gap-8">
+  <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+    <div class="text-3xl mb-3">🔎</div>
+    <h3 class="font-bold text-lg mb-1">Find the Right Doctor</h3>
+    <p class="text-slate-600 text-sm">Search and filter by specialization, fee, and rating.</p>
+  </div>
+  <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+    <div class="text-3xl mb-3">📅</div>
+    <h3 class="font-bold text-lg mb-1">Book Instantly</h3>
+    <p class="text-slate-600 text-sm">Pick a date and time slot in seconds — no phone calls needed.</p>
+  </div>
+  <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+    <div class="text-3xl mb-3">📋</div>
+    <h3 class="font-bold text-lg mb-1">Track Everything</h3>
+    <p class="text-slate-600 text-sm">View appointment status and your medical history anytime.</p>
+  </div>
+</div>
+{% endblock %}

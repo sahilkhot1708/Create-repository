@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-slate-900 mb-1">Welcome back<span id="welcomeName"></span> 👋</h1>
+  <p class="text-slate-500 mb-8">Here's a quick look at your care.</p>
+
+  <p id="loginNotice" class="hidden bg-amber-50 text-amber-800 text-sm p-3 rounded-lg mb-6">
+    Please <a href="/login" class="underline font-medium">log in</a> to see your dashboard.
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Upcoming Appointments</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statUpcoming">—</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Pending Approval</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statPending">—</p>
+    </div>
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+      <p class="text-slate-500 text-sm font-medium">Completed Visits</p>
+      <p class="text-3xl font-bold text-slate-900 mt-2" id="statCompleted">—</p>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap gap-4 mb-10">
+    <a href="/doctors/search" class="bg-primary text-white px-5 py-2.5 rounded-lg font-medium hover:bg-primaryHover">Find a Doctor</a>
+    <a href="/my-appointments" class="border border-slate-300 text-slate-700 px-5 py-2.5 rounded-lg font-medium hover:bg-slate-100">My Appointments</a>
+    <a href="/profile" class="border border-slate-300 text-slate-700 px-5 py-2.5 rounded-lg font-medium hover:bg-slate-100">My Profile</a>
+  </div>
+
+  <h2 class="text-xl font-bold text-slate-900 mb-4">Next Appointment</h2>
+  <div id="nextAppt" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-slate-500">Loading…</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener('firebase-ready', () => {
+  import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ onAuthStateChanged }) => {
+    onAuthStateChanged(window.firebaseAuth, async (user) => {
+      document.getElementById('loginNotice').classList.toggle('hidden', !!user);
+      if (!user) return;
+      document.getElementById('welcomeName').textContent = user.displayName ? `, ${user.displayName}` : '';
+
+      const idToken = await user.getIdToken();
+      const res = await fetch('/api/appointments/mine', { headers: { 'Authorization': `Bearer ${idToken}` } });
+      const appts = await res.json();
+      if (!res.ok) return;
+
+      const upcoming = appts.filter(a => ['Pending', 'Approved'].includes(a.status));
+      document.getElementById('statUpcoming').textContent = upcoming.length;
+      document.getElementById('statPending').textContent = appts.filter(a => a.status === 'Pending').length;
+      document.getElementById('statCompleted').textContent = appts.filter(a => a.status === 'Completed').length;
+
+      const next = upcoming.sort((a, b) => (a.date || '').localeCompare(b.date || ''))[0];
+      document.getElementById('nextAppt').innerHTML = next ? `
+        <p class="font-bold text-slate-900">${next.doctorName}</p>
+        <p class="text-sm text-primary">${next.specialization || ''}</p>
+        <p class="text-sm text-slate-600 mt-1">${next.date} • ${next.timeSlot}</p>
+        <span class="status-${next.status} inline-block mt-2 px-2.5 py-1 rounded-full text-xs font-semibold">${next.status}</span>
+      ` : `<p>No upcoming appointments. <a href="/doctors/search" class="text-primary hover:underline">Book one now</a>.</p>`;
+    });
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold text-slate-900 mb-6">My Appointments</h1>
+  <p id="loginNotice" class="hidden bg-amber-50 text-amber-800 text-sm p-3 rounded-lg mb-4">
+    Please <a href="/login" class="underline font-medium">log in</a> to view your appointments.
+  </p>
+  <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+    <table class="w-full text-left border-collapse">
+      <thead class="bg-slate-100 text-slate-700 text-sm">
+        <tr>
+          <th class="p-4">Doctor</th>
+          <th class="p-4">Date & Time</th>
+          <th class="p-4">Notes</th>
+          <th class="p-4">Status</th>
+          <th class="p-4">Action</th>
+        </tr>
+      </thead>
+      <tbody id="apptRows" class="divide-y divide-slate-200 text-sm">
+        <tr><td class="p-4 text-slate-400" colspan="5">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Reschedule modal -->
+<div id="rescheduleModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-xl p-6 w-full max-w-sm">
+    <h3 class="font-bold text-lg mb-4">Reschedule Appointment</h3>
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-1">New Date</label>
+      <input type="date" id="rescheduleDate" class="w-full border border-slate-300 rounded-lg p-2.5">
+    </div>
+    <div class="mb-4">
+      <label class="block text-sm font-medium mb-1">New Time Slot</label>
+      <select id="rescheduleTime" class="w-full border border-slate-300 rounded-lg p-2.5">
+        <option>10:00 AM - 11:00 AM</option>
+        <option>11:30 AM - 12:30 PM</option>
+        <option>02:00 PM - 03:00 PM</option>
+        <option>04:00 PM - 05:00 PM</option>
+      </select>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="closeReschedule()" class="flex-1 border border-slate-300 py-2 rounded-lg">Cancel</button>
+      <button onclick="submitReschedule()" class="flex-1 bg-primary text-white py-2 rounded-lg">Save</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let rescheduleId = null;
+
+function rowHtml(a) {
+  const canAct = ['Pending', 'Approved'].includes(a.status);
+  return `
+    <tr>
+      <td class="p-4 font-medium">${a.doctorName || ''}</td>
+      <td class="p-4">${a.date || ''} | ${a.timeSlot || ''}</td>
+      <td class="p-4 text-slate-500">${a.notes || '—'}</td>
+      <td class="p-4"><span class="status-${a.status} px-2.5 py-1 rounded-full text-xs font-semibold">${a.status}</span></td>
+      <td class="p-4 space-x-3">
+        ${canAct ? `<button onclick="openReschedule('${a.id}')" class="text-primary hover:underline">Reschedule</button>
+        <button onclick="cancelAppt('${a.id}')" class="text-red-600 hover:underline">Cancel</button>` : '—'}
+      </td>
+    </tr>
+  `;
+}
+
+async function loadAppointments(user) {
+  const tbody = document.getElementById('apptRows');
+  try {
+    const idToken = await user.getIdToken();
+    const res = await fetch('/api/appointments/mine', { headers: { 'Authorization': `Bearer ${idToken}` } });
+    const appts = await res.json();
+    if (!res.ok) throw new Error(appts.error || 'Failed to load');
+    tbody.innerHTML = appts.length
+      ? appts.map(rowHtml).join('')
+      : '<tr><td class="p-4 text-slate-400" colspan="5">No appointments yet. <a href="/doctors/search" class="text-primary hover:underline">Book one now</a>.</td></tr>';
+  } catch (e) {
+    tbody.innerHTML = `<tr><td class="p-4 text-red-600" colspan="5">${e.message}</td></tr>`;
+  }
+}
+
+window.addEventListener('firebase-ready', () => {
+  import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ onAuthStateChanged }) => {
+    onAuthStateChanged(window.firebaseAuth, (user) => {
+      document.getElementById('loginNotice').classList.toggle('hidden', !!user);
+      if (user) loadAppointments(user);
+      else document.getElementById('apptRows').innerHTML = '';
+    });
+  });
+});
+
+async function cancelAppt(id) {
+  if (!confirm('Cancel this appointment?')) return;
+  const user = window.firebaseAuth.currentUser;
+  const idToken = await user.getIdToken();
+  const res = await fetch(`/api/appointments/${id}/cancel`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${idToken}` } });
+  if (res.ok) loadAppointments(user);
+  else alert((await res.json()).error || 'Failed to cancel');
+}
+
+function openReschedule(id) {
+  rescheduleId = id;
+  document.getElementById('rescheduleModal').classList.remove('hidden');
+}
+function closeReschedule() {
+  rescheduleId = null;
+  document.getElementById('rescheduleModal').classList.add('hidden');
+}
+async function submitReschedule() {
+  const user = window.firebaseAuth.currentUser;
+  const idToken = await user.getIdToken();
+  const res = await fetch(`/api/appointments/${rescheduleId}/reschedule`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+    body: JSON.stringify({
+      date: document.getElementById('rescheduleDate').value,
+      timeSlot: document.getElementById('rescheduleTime').value
+    })
+  });
+  closeReschedule();
+  if (res.ok) loadAppointments(user);
+  else alert((await res.json()).error || 'Failed to reschedule');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}CarePulse - Hospital Management System{% endblock %}</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: { primary: '#0D9488', primaryHover: '#0F766E' },
+        fontFamily: { sans: ['Poppins', 'sans-serif'] }
+      }
+    }
+  }
+</script>
+<style>
+  .status-Pending{background:#fef3c7;color:#92400e}
+  .status-Approved{background:#d1fae5;color:#065f46}
+  .status-Rejected{background:#fee2e2;color:#991b1b}
+  .status-Completed{background:#dbeafe;color:#1e40af}
+  .status-Cancelled{background:#e5e7eb;color:#374151}
+</style>
+
+<!-- Firebase (client SDK) -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+  window.firebaseConfig = {
+    apiKey: "{{ firebase_config.apiKey }}",
+    authDomain: "{{ firebase_config.authDomain }}",
+    projectId: "{{ firebase_config.projectId }}",
+    storageBucket: "{{ firebase_config.storageBucket }}",
+    messagingSenderId: "{{ firebase_config.messagingSenderId }}",
+    appId: "{{ firebase_config.appId }}"
+  };
+
+  window.firebaseApp = initializeApp(window.firebaseConfig);
+  window.firebaseAuth = getAuth(window.firebaseApp);
+  window.dispatchEvent(new Event('firebase-ready'));
+</script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 flex flex-col min-h-screen">
+
+<nav class="bg-white border-b border-slate-200 sticky top-0 z-50">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex justify-between h-16 items-center">
+      <div class="flex items-center">
+        <a href="/" class="text-2xl font-bold text-primary flex items-center gap-2">🏥 <span>CarePulse</span></a>
+        <div class="hidden md:flex ml-10 space-x-6">
+          <a href="/" class="text-slate-600 hover:text-primary transition">Home</a>
+          <a href="/about" class="text-slate-600 hover:text-primary transition">About</a>
+          <a href="/doctors/search" class="text-slate-600 hover:text-primary transition">Find Doctors</a>
+          <a href="/my-appointments" class="text-slate-600 hover:text-primary transition">My Appointments</a>
+          {% if is_admin %}
+          <a href="/admin/dashboard" class="text-slate-600 hover:text-primary transition font-medium">Admin Panel</a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="flex items-center gap-4" id="navAuthArea">
+        <a href="/login" class="text-primary font-medium hover:underline">Login</a>
+        <a href="/signup" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primaryHover transition">Register</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<main class="flex-grow">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="bg-slate-900 text-slate-400 py-6 mt-12">
+  <div class="max-w-7xl mx-auto px-4 text-center text-sm">
+    <p>&copy; 2026 CarePulse Hospital Management System. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+  // Shared: fill in the nav's auth area once we know if a patient is signed in.
+  window.addEventListener('firebase-ready', () => {
+    import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js").then(({ onAuthStateChanged, signOut }) => {
+      onAuthStateChanged(window.firebaseAuth, (user) => {
+        const area = document.getElementById('navAuthArea');
+        if (!area) return;
+        if (user) {
+          area.innerHTML = `
+            <a href="/dashboard" class="text-slate-600 hover:text-primary transition">${user.email}</a>
+            <button id="navLogoutBtn" class="border border-slate-300 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-100 transition">Logout</button>
+          `;
+          document.getElementById('navLogoutBtn').onclick = async () => {
+            await signOut(window.firebaseAuth);
+            window.location.href = '/';
+          };
+        }
+      });
+    });
+  });
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

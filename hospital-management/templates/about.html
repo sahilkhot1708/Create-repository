@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+  <h1 class="text-3xl font-bold text-slate-900 mb-4">About CarePulse</h1>
+  <p class="text-slate-600 max-w-3xl mb-10">
+    CarePulse is a lightweight hospital appointment and patient management system built for small
+    and mid-sized clinics. Patients can browse doctors, check availability, and book appointments
+    online, while clinic staff manage schedules and records from a single dashboard.
+  </p>
+
+  <h2 class="text-2xl font-bold text-slate-900 mb-4">Our Departments</h2>
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-12" id="deptGrid">
+    <!-- Filled from doctors list -->
+  </div>
+
+  <h2 class="text-2xl font-bold text-slate-900 mb-4">Meet Our Doctors</h2>
+  <div id="doctorPreview" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <p class="text-slate-500 col-span-3">Loading doctors…</p>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function loadAbout() {
+  try {
+    const res = await fetch('/api/doctors');
+    if (!res.ok) throw new Error();
+    const doctors = await res.json();
+
+    const specs = [...new Set(doctors.map(d => d.specialization))];
+    document.getElementById('deptGrid').innerHTML = specs.map(s => `
+      <div class="bg-white border border-slate-200 rounded-xl p-5 text-center shadow-sm">
+        <div class="text-2xl mb-2">🩺</div>
+        <p class="font-semibold text-slate-800">${s}</p>
+      </div>
+    `).join('') || '<p class="text-slate-500">No departments yet.</p>';
+
+    document.getElementById('doctorPreview').innerHTML = doctors.slice(0, 6).map(d => `
+      <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="font-bold text-lg">${d.name}</h3>
+        <p class="text-primary text-sm font-medium">${d.specialization} • ${d.experience || ''}</p>
+        <p class="text-slate-600 text-sm mt-2">₹${d.fee} per visit</p>
+        <a href="/book/${d.id}" class="mt-3 inline-block text-primary font-medium hover:underline text-sm">Book now →</a>
+      </div>
+    `).join('') || '<p class="text-slate-500 col-span-3">No doctors added yet.</p>';
+  } catch (e) {
+    document.getElementById('doctorPreview').innerHTML =
+      '<p class="text-slate-500 col-span-3">Could not load doctors. Is Firebase configured yet?</p>';
+  }
+}
+loadAbout();
+</script>
+{% endblock %}
